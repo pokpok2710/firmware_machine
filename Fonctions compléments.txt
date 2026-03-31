@@ -1,0 +1,355 @@
+void serviceBoisson(int nbBacs, int b1, int t1, int b2, int t2, int b3, int t3, int b4, int t4, int pId, int tSirop, int tEau, String couleur, int forceMode) {
+
+  // Allumage de la bande led
+  couleur.trim(); 
+
+  if (couleur == "ICE_TEA" || couleur == "MULTIFRUIT" || couleur == "ORANGE") {
+       LED_R_Boisson = LED_R_ORANGE; LED_G_Boisson = LED_G_ORANGE; LED_B_Boisson = LED_B_ORANGE;
+  } else if (couleur == "APPLE") {
+       LED_R_Boisson = LED_R_POMME; LED_G_Boisson = LED_G_POMME; LED_B_Boisson = LED_B_POMME;
+  } else if (couleur == "RED_FRUIT") {
+       LED_R_Boisson = LED_R_FRAISE; LED_G_Boisson = LED_G_FRAISE; LED_B_Boisson = LED_B_FRAISE;
+  } else if (couleur == "LEMON") {
+       LED_R_Boisson = LED_R_CITRON; LED_G_Boisson = LED_G_CITRON; LED_B_Boisson = LED_B_CITRON;
+  } else if (couleur == "WATER") {
+       LED_R_Boisson = LED_R_EAU; LED_G_Boisson = LED_G_EAU; LED_B_Boisson = LED_B_EAU;
+  }
+  else if (couleur == "CHOCOLATE") {
+       LED_R_Boisson = LED_R; LED_G_Boisson = LED_G; LED_B_Boisson = LED_B;
+  }
+  else if (couleur == "VANILLA") {
+       LED_R_Boisson = LED_R_VANILLA; LED_G_Boisson = LED_G_VANILLA; LED_B_Boisson = LED_B_VANILLA;
+  } 
+  else if (couleur == "COCO") {
+       LED_R_Boisson = LED_R_COCO; LED_G_Boisson = LED_G_COCO; LED_B_Boisson = LED_B_COCO;
+  }
+  else if (couleur == "COOKIE") {
+       LED_R_Boisson = LED_R_VANILLA; LED_G_Boisson = LED_G_VANILLA; LED_B_Boisson = LED_B_VANILLA;
+  }else {
+       // Défaut (Vert repos ou autre)
+       LED_R_Boisson = LED_R; LED_G_Boisson = LED_G; LED_B_Boisson = LED_B;
+  }
+
+  ledBreathingActive = true;
+  // On allume la bande LED 2
+  fill_solid(leds2, NUM_LEDS_2, CRGB(LED_R_Boisson, LED_G_Boisson, LED_B_Boisson));
+  FastLED.show();
+
+  // On prévient l'app du lancement du process
+  Serial.println("{OUVERTURE}");
+  UART.println("{OUVERTURE}");
+
+  // Début du service
+  verrouiller_moteurs();
+  if(last_position_chariot == 1 || last_position_chariot == 0){ // Accepte les deux au cas où
+    position_chariot(3);  // Passage centre
+    last_position_chariot = 3;
+    position_chariot(4);  // Attente ouverture porte
+    last_position_chariot = 4;
+    bouger_porte(-36500);
+    attendreFinMouvement();
+    position_chariot(5);  // Position service
+    last_position_chariot = 5;
+  }
+  else{
+    if(last_position_chariot == 4){
+        bouger_porte(-36500);
+        attendreFinMouvement();
+        position_chariot(5);  // Position service
+        last_position_chariot = 5;
+    }
+  }
+
+  // --- LOGIQUE DETECTION MODIFIEE ---
+  bool shakerTrouve = false;
+
+  if (forceMode == 1) {
+      // SI FORCE ACTIVÉ : On simule une détection réussie immédiatement
+      shakerTrouve = true;
+      shakerPresent_C = true; // Important pour l'animation LED plus bas
+      attendre(5000);
+      Serial.println("{SHAKER_DETECTE}");
+      UART.println("{SHAKER_DETECTE}");
+  } 
+  else {
+      // SINON : Comportement normal avec Ultrasons
+      unsigned long startDetection = millis();
+      while (millis() - startDetection < 12000) {
+        float d1 = getDistance(US1_TRIG, US1_ECHO);
+        if (d1 > 0.1 && d1 < 14) {
+           shakerPresent_C = true;
+           shakerTrouve = true;
+           break; 
+        }
+        attendre(100); 
+      }
+  }
+
+  // Si échec (seulement si forceMode était 0)
+  if (!shakerTrouve) {
+    
+    ledBreathingActive = false;
+    delay(50);
+    fill_solid(leds2, NUM_LEDS_2, CRGB(LED_R, LED_G, LED_B)); 
+    FastLED.show();
+
+    // On recule le chariot
+    position_chariot(4);  // Attente ouverture porte
+    last_position_chariot = 4;
+    attendre(600);
+    fermerPorteActive();
+    Serial.println("{NO_SHAKER}");
+    UART.println("{NO_SHAKER}");
+    deverrouiller_moteurs();
+    return; // On annule tout
+  }
+
+  // --- SUCCES ---
+  Serial.println("{SHAKER_DETECTE}");
+  UART.println("{SHAKER_DETECTE}");
+  attendre(2000);
+
+  //Retour en arrière avant d'aller aux bacs
+  position_chariot(4);
+  last_position_chariot = 4;
+
+  // Fermeture de la porte
+  fermerPorteActive();
+  Serial.println("{BOISSON_LANCEE}");
+  UART.println("{BOISSON_LANCEE}");
+
+  Serial.println("temps pompe: ");
+  Serial.println(tSirop);
+  Serial.println("numero pompe: ");
+  Serial.println(pId);
+  activerSortie(pId, tSirop); // Arome
+  activerSortie(12, tEau);    // Eau (Vanne 2)
+  
+  attendre(tEau+1000);
+  
+  // ... Le reste de la fonction (Switch nbBacs, etc.) reste identique ...
+  // COPIE LE RESTE DE TON CODE 'serviceBoisson' EXISTANT ICI A PARTIR DU SWITCH(nbBacs)
+  // ...
+  // ... Jusqu'à la fin de la fonction
+  
+  Serial.println(nbBacs);
+  Serial.println(b1);
+  Serial.println(t1);
+
+  //attendre ici pour pas voir l'intérieur de la machine ?
+  position_chariot(3);
+  last_position_chariot = 3;
+
+  switch (nbBacs) {
+    case 1:
+      chariot_bac(b1);
+      attendreFinMouvement();
+      activerBac(b1, t1); 
+      break;
+    case 2:
+      chariot_bac(b1);
+      attendreFinMouvement();
+      activerBac(b1, t1);
+      
+      chariot_bac(b2);
+      attendreFinMouvement();
+      activerBac(b2, t2);
+      break;
+    case 3:
+      chariot_bac(b1);
+      attendreFinMouvement();
+      activerBac(b1, t1);
+
+      chariot_bac(b2);
+      attendreFinMouvement();
+      activerBac(b2, t2);
+      
+      chariot_bac(b3);
+      attendreFinMouvement();
+      activerBac(b3, t3);
+      break;
+    case 4:
+      chariot_bac(b1);
+      attendreFinMouvement();
+      activerBac(b1, t1);
+
+      chariot_bac(b2);
+      attendreFinMouvement();
+      activerBac(b2, t2);
+
+      chariot_bac(b3);
+      attendreFinMouvement();
+      activerBac(b3, t3);
+
+      chariot_bac(b4);
+      attendreFinMouvement();
+      activerBac(b4, t4);
+      break;
+    
+    default:
+      break;
+  }
+
+  position_chariot(3);  // Passage centre
+  last_position_chariot = 3;
+  position_chariot(4);  // Attente ouverture porte
+  last_position_chariot = 4;
+  bouger_porte(-36500);
+  attendreFinMouvement();
+  position_chariot(5);  // Position service
+  last_position_chariot = 5;
+
+  ledBreathingActive = false; 
+  delay(50); 
+
+  // Remise led standard
+  CRGB repos = CRGB(LED_R, LED_G, LED_B);
+  fill_solid(leds2, NUM_LEDS_2, repos);
+  FastLED.show();
+
+  Serial.println("{BOISSON_TERMINEE}");
+  UART.println("{BOISSON_TERMINEE}");
+
+  // --- SÉCURITÉ RETRAIT DU SHAKER ---
+  if (forceMode == 1) {
+      // 1. CAS BYPASS (F:1) : On ignore complètement le capteur
+      Serial.println("Mode Force : Bypass de l'attente de retrait.");
+      attendre(8000); // Petite pause de courtoisie de 3 secondes avant de refermer
+      shakerPresent_C = false;
+  } 
+  else {
+      // 2. CAS NORMAL : On attend le retrait, mais avec un chronomètre de 10s max
+      unsigned long debutRetrait = millis();
+      
+      while (true) {
+        float d1 = getDistance(US1_TRIG, US1_ECHO);
+        
+        // Si la distance est grande (> 14cm), le shaker est bien retiré
+        if (d1 > 14 || d1 == 0) {
+          shakerPresent_C = false;
+          Serial.println("Shaker retiré naturellement.");
+          UART.println("Shaker retiré naturellement.");
+          break; 
+        }
+
+        // TIMEOUT DE SÉCURITÉ : Si on attend depuis plus de 10 secondes, on coupe
+        if (millis() - debutRetrait > 10000) {
+            Serial.println("ERREUR: Timeout Retrait. Fermeture automatique de sécurité.");
+            UART.println("ERREUR: Timeout Retrait. Fermeture automatique de sécurité.");
+            shakerPresent_C = false;
+            break; // On sort de la boucle et on force la fermeture
+        }
+        
+        attendre(200); 
+      }
+  }
+
+  // --- FERMETURE ---
+  attendre(2500); 
+
+  position_chariot(4); 
+  last_position_chariot = 4;
+  
+  fermerPorteActive();
+  
+  deverrouiller_moteurs();
+
+  // Home pour être sur de sa position ?
+  position_chariot(3);  // Passage centre
+  last_position_chariot = 3;
+  homerChariotActif();
+
+  // --- AJOUT : DÉMARRAGE DES CHRONOS DE NETTOYAGE ---
+  chronoFinServiceComplexe = millis();
+  attenteNettoyage1Min = true;
+  attenteNettoyage10Min = true;
+  Serial.println("Chronos de nettoyage auto (1min et 10min) démarrés.");
+  // --------------------------------------------------
+}
+
+
+
+// PARSING COMMANDE COMPLEXE (Commence par [ )
+    // ============================================================
+    if (cmd.startsWith("[")) {
+        
+        Serial.println(">>> Parsing Sequence Complexe...");
+
+        // 1. Réinitialisation des variables
+        nb_bacs_seq = 0;
+        seq_b1=0; seq_t1=0; seq_b2=0; seq_t2=0; 
+        seq_b3=0; seq_t3=0; seq_b4=0; seq_t4=0;
+        seq_pompe=0; seq_sirop=0; seq_eau=0; seq_col="";
+        seq_force=0; // Reset Force
+
+        // 2. Nettoyage de la chaine
+        String workStr = cmd;
+        workStr.replace("[", ""); 
+        workStr.replace("]", "");
+
+        // 3. Boucle de lecture
+        int curseur = 0;
+        while (curseur < workStr.length()) {
+            int debut = workStr.indexOf('{', curseur);
+            int fin = workStr.indexOf('}', debut);
+            if (debut == -1 || fin == -1) break;
+
+            String s = workStr.substring(debut + 1, fin);
+
+            // --- CAS A : C'est un Bac (B:) ---
+            if (s.indexOf("B:") >= 0) {
+                nb_bacs_seq++; 
+                int idxB = s.indexOf("B:") + 2;
+                int valB = s.substring(idxB, s.indexOf(";", idxB)).toInt();
+                
+                int idxT = s.indexOf("T:") + 2;
+                int valT = s.substring(idxT).toInt();
+                
+                if (nb_bacs_seq == 1) { seq_b1 = valB; seq_t1 = valT; }
+                else if (nb_bacs_seq == 2) { seq_b2 = valB; seq_t2 = valT; }
+                else if (nb_bacs_seq == 3) { seq_b3 = valB; seq_t3 = valT; }
+                else if (nb_bacs_seq == 4) { seq_b4 = valB; seq_t4 = valT; }
+            }
+            
+            // --- CAS B : C'est le Liquide (P:) ---
+            else if (s.indexOf("P:") >= 0) {
+                // 1. Extraction Force (F) si présent
+                if (s.indexOf("F:") >= 0) {
+                    int idxF = s.indexOf("F:") + 2;
+                    int endF = s.indexOf(";", idxF); 
+                    if(endF == -1) endF = s.length();
+                    seq_force = s.substring(idxF, endF).toInt();
+                }
+
+                // Extraction P
+                int idxP = s.indexOf("P:") + 2;
+                seq_pompe = s.substring(idxP, s.indexOf(";", idxP)).toInt();
+                
+                // Extraction T
+                int idxT = s.indexOf("T:") + 2;
+                seq_sirop = s.substring(idxT, s.indexOf(";", idxT)).toInt();
+                
+                // Extraction Q
+                int idxQ = s.indexOf("Q:") + 2;
+                seq_eau = s.substring(idxQ, s.indexOf(";", idxQ)).toInt();
+                if (seq_eau > 15000) seq_eau = 15000; // <-- SECURITE EAU
+                
+                // Extraction C (Attention au F éventuel)
+                int idxC = s.indexOf("C:") + 2;
+                int endC = s.length();
+                if (s.indexOf("F:") > 0) {
+                    endC = s.indexOf("F:") - 1; // On s'arrête au point-virgule avant F
+                }
+                seq_col = s.substring(idxC, endC);
+            }
+            
+            curseur = fin + 1;
+        }
+
+        Serial.printf("Parsing Fini. Bacs: %d, F=%d\n", nb_bacs_seq, seq_force);
+        
+        // APPEL AVEC LE NOUVEL ARGUMENT seq_force
+        serviceBoisson(nb_bacs_seq, seq_b1, seq_t1, seq_b2, seq_t2, seq_b3, seq_t3, seq_b4, seq_t4, seq_pompe, seq_sirop, seq_eau, seq_col, seq_force);
+        
+        return; 
+    }
