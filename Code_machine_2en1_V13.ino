@@ -566,22 +566,19 @@ void serviceBoisson(int nbBacs, int b1, int t1, int b2, int t2, int b3, int t3, 
   // Début du service
   verrouiller_moteurs();
 
-  // --- CORRECTION : OUVERTURE ROBUSTE DE LA PORTE ---
-  // Peu importe où le chariot se trouve, on l'amène d'abord au centre passage
-  // pour éviter toute collision latérale.
+// --- CORRECTION : OUVERTURE ROBUSTE DE LA PORTE ---
   position_chariot(3);  // Passage centre
   
-  // Ensuite on l'amène en position d'attente derrière la porte
-  position_chariot(4);  // Attente ouverture porte
+  if (forceMode == 0) {
+      // En mode normal, on se met en attente et on ouvre
+      position_chariot(4);  
+      bouger_porte(-36500); 
+      attendreFinMouvement();
+  }
   
-  // On ouvre la porte
-  bouger_porte(-36500); 
-  attendreFinMouvement();
-  
-  // Et on avance en position de service
-  position_chariot(5);  // Position service
-  
-  last_position_chariot = 5; // On met à jour la mémoire
+  // Et on avance en position de service (Porte déjà ouverte si F:1)
+  position_chariot(5);  
+  last_position_chariot = 5;
 /*
   // Début du service
   verrouiller_moteurs();
@@ -612,7 +609,7 @@ void serviceBoisson(int nbBacs, int b1, int t1, int b2, int t2, int b3, int t3, 
       // SI FORCE ACTIVÉ : On simule une détection réussie immédiatement
       shakerTrouve = true;
       shakerPresent_C = true; // Important pour l'animation LED plus bas
-      attendre(5000);
+      attendre(1000);
       Serial.println("{SHAKER_DETECTE}");
       UART.println("{SHAKER_DETECTE}");
   } 
@@ -651,7 +648,7 @@ void serviceBoisson(int nbBacs, int b1, int t1, int b2, int t2, int b3, int t3, 
   // --- SUCCES ---
   Serial.println("{SHAKER_DETECTE}");
   UART.println("{SHAKER_DETECTE}");
-  attendre(2000);
+  attendre(1000);
 
   //Retour en arrière avant d'aller aux bacs
   position_chariot(4);
@@ -846,9 +843,10 @@ void homerChariotActif() {
   // --- NOUVEL AJOUT : PLACEMENT AU CENTRE APRÈS LE HOMING ---
   // On recule un peu pour se dégager des capteurs
   position_chariot(3);
+  position_chariot(4);
   // ---------------------------------------------------------
 
-  last_position_chariot = 1; 
+  last_position_chariot = 4; 
   homingActive = false; 
 }
 // ----------------------
@@ -1488,6 +1486,8 @@ void traiterCommande(String cmd) {
 
     // --- GESTION MANUELLE PORTE COULISSANTE ---
     else if (cmd == "{OPEN_DOOR}") {
+        position_chariot(3);
+        position_chariot(4);
         Serial.println("Ouverture manuelle Porte Coulissante...");
         UART.println("Ouverture Porte");
         bouger_porte(-36500); // Envoie la porte à la position ouverte
@@ -1652,6 +1652,9 @@ void loop() {
     float d1 = getDistance(US1_TRIG, US1_ECHO); // Complément
     delay(2);
     float d2 = getDistance(US2_TRIG, US2_ECHO);  // Boisson
+
+    // --- LIGNES DE DEBUG À AJOUTER ICI ---
+    //Serial.printf("Capteur C (Complement): %.2f cm | Capteur B (Boisson): %.2f cm\n", d1, d2);
     
     // --- CAPTEUR C (Complément) -> INTACT ---
     if (d1 > 0.1 && d1 < 14) {  // Distance en dessous de 14cm
